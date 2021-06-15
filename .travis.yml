@@ -1,6 +1,9 @@
+dist: bionic
 language: node_js
 node_js:
-  - "12"
+  - 12
+  - lts/*
+  - node
 cache:
   directories:
     - "node_modules"

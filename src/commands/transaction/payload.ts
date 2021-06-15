@@ -37,13 +37,13 @@ import { TransactionView } from '../../views/transactions/details/transaction.vi
 export class CommandOptions extends AnnounceTransactionsOptions {
     @option({
         flag: 'P',
-        description: 'Transaction payload to be announced.',
+        description: 'Transaction payload to be announced (hex string).',
     })
     payload: string;
 
     @option({
         flag: 'c',
-        description: 'Cosignatures array to be added.',
+        description: 'Cosignatures json array to be added (e.g. ["cosig1","cosig2"]).',
     })
     cosignatures: string;
 }
@@ -64,7 +64,14 @@ export default class extends AnnounceTransactionsCommand {
         this.options = options;
         this.profile = this.getProfile(this.options);
 
-        const txPayload = await OptionsResolver(options, 'payload', () => undefined, 'Enter the transaction payload:', 'text', undefined);
+        const txPayload = await OptionsResolver(
+            options,
+            'payload',
+            () => undefined,
+            'Enter the transaction payload (hex string):',
+            'text',
+            undefined,
+        );
         const transaction = TransactionMapping.createFromPayload(txPayload) as AggregateTransaction;
         console.log(FormatterService.success('Transaction loaded:'));
         new TransactionView(transaction, undefined, this.profile).print();

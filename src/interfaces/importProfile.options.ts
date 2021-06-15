@@ -30,7 +30,7 @@ export class ImportProfileOptions extends CreateProfileOptions {
 
     @option({
         flag: 'M',
-        description: '(Optional) Import a profile using a private key.',
+        description: '(Optional) Import a profile using a mnemonic.',
     })
     mnemonic: string;
 

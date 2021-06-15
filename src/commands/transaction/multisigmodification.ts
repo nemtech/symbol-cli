@@ -73,7 +73,7 @@ export class CommandOptions extends AnnounceTransactionsOptions {
 
     @option({
         flag: 'd',
-        description: 'Deadline (milliseconds, without Nemesis epoch adjustment)',
+        description: 'Deadline (milliseconds since Nemesis block)',
     })
     deadline: string;
 }

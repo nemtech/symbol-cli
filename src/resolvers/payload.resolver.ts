@@ -36,7 +36,7 @@ export class PayloadResolver implements Resolver {
             options,
             altKey ? altKey : 'payload',
             () => undefined,
-            altText ? altText : 'Enter a transaction payload:',
+            altText ? altText : 'Enter a transaction payload (hex string):',
             'text',
             undefined,
         );

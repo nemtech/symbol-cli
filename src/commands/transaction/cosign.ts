@@ -49,7 +49,7 @@ export class CommandOptions extends AnnounceTransactionsOptions {
 
     @option({
         flag: 'p',
-        description: 'Aggregate transaction payload to be signed.',
+        description: 'Aggregate transaction payload to be signed (hex string).',
     })
     payload: string;
 }
@@ -97,7 +97,7 @@ export default class extends ProfileCommand {
                 options,
                 'payload',
                 () => undefined,
-                'Enter the transaction payload:',
+                'Enter the transaction payload (hex string):',
                 'text',
                 undefined,
             );
