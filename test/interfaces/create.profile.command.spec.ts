@@ -168,7 +168,7 @@ describe('AccountCredentialsTable', () => {
     });
 
     it('toString() should not be undefined when creating a table from a private key profile', () => {
-        const table = AccountCredentialsTable.createFromProfile(mockPrivateKeyProfile1, new Password('password'));
+        const table = mockPrivateKeyProfile1.getTable(new Password('password'));
 
         const tableAsString = table.toString();
         expect(tableAsString).not.to.be.undefined;
@@ -176,7 +176,7 @@ describe('AccountCredentialsTable', () => {
     });
 
     it('toString() should not be undefined when creating a table from an HD profile', () => {
-        const table = AccountCredentialsTable.createFromProfile(mockHdProfile1, new Password('password'));
+        const table = mockHdProfile1.getTable(new Password('password'));
 
         const tableAsString = table.toString();
         expect(tableAsString).not.to.be.undefined;

@@ -48,8 +48,8 @@ export class TransactionAnnounceModeResolver implements Resolver {
         }
 
         const choices = Object.keys(TransactionAnnounceMode).map((string) => ({
-            title: string,
-            value: string,
+            title: string as TransactionAnnounceMode,
+            value: string as TransactionAnnounceMode,
         }));
 
         return OptionsChoiceResolver(

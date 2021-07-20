@@ -43,6 +43,10 @@ export class ImportTypeResolver implements Resolver {
             }
         }
 
+        if (options.ledger) {
+            return ImportType.Ledger;
+        }
+
         if (options.hd) {
             return ImportType.Mnemonic;
         }

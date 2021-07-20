@@ -18,8 +18,8 @@
 
 import * as Table from 'cli-table3';
 import { HorizontalTable } from 'cli-table3';
-import { ExpectedError } from 'clime';
-import { Account, Address, NetworkType, Password, RepositoryFactoryHttp, SimpleWallet } from 'symbol-sdk';
+import { Address, NetworkType, Password, RepositoryFactoryHttp } from 'symbol-sdk';
+import { SigningAccount } from '../services/signing.service';
 import { NetworkCurrency } from './networkCurrency.model';
 import { ProfileDTO } from './profileDTO.types';
 
@@ -33,9 +33,18 @@ export type ProfileRecord = Record<string, ProfileDTO>;
 /**
  * Profile types.
  */
-export type ProfileType = 'PrivateKey' | 'HD';
+export type ProfileType = 'PrivateKey' | 'HD' | 'Ledger';
 
 export const epochAdjustment = 1573430400;
+
+/**
+ * Basic abstraction of the sdk wallet. The current sdk wallet expect a private key to be present which is not the case in a Ledger.
+ */
+export interface CliWallet {
+    readonly name: string;
+    readonly address: Address;
+    readonly networkType: NetworkType;
+}
 
 /**
  * Base implementation of the Profile models
@@ -43,28 +52,20 @@ export const epochAdjustment = 1573430400;
  * @abstract
  * @class Profile
  */
-export abstract class Profile {
-    /**
-     * View of the profile properties
-     * @protected
-     * @type {HorizontalTable}
-     */
-    protected table: HorizontalTable;
-
+export abstract class Profile<T extends CliWallet = CliWallet> {
     /**
      * Creates an instance of Profile.
-     * @param {SimpleWallet} simpleWallet
+     * @param {CliWallet} simpleWallet
      * @param {string} url
      * @param {string} networkGenerationHash
-     * @param {number} epochAdjustment
-     * @param {number} the configured epoch adjustment.
+     * @param {number} epochAdjustment the configured epoch adjustment.
      * @param {NetworkCurrency} networkCurrency
      * @param {number} version
      * @param {ProfileType} type
      * @param {('0' | '1')} isDefault
      */
     protected constructor(
-        public readonly simpleWallet: SimpleWallet,
+        public readonly simpleWallet: T,
         public readonly url: string,
         public readonly networkGenerationHash: string,
         public readonly epochAdjustment: number,
@@ -100,6 +101,11 @@ export abstract class Profile {
     }
 
     /**
+     * The table showing the data of the profile.
+     */
+    public abstract getTable(password?: Password): HorizontalTable;
+
+    /**
      * Gets profile address.
      * @returns {Address}
      */
@@ -132,45 +138,23 @@ export abstract class Profile {
     }
 
     /**
-     * Returns true if the password is valid.
-     * @param {Password} password.
-     * @returns {boolean}
-     */
-    public isPasswordValid(password: Password): boolean {
-        try {
-            this.simpleWallet.open(password);
-            return true;
-        } catch (error) {
-            return false;
-        }
-    }
-
-    /**
-     * Opens a wallet.
-     * @param {Password} options - The  attribute "password" should contain the profile's password.
-     * @throws {ExpectedError}
+     * Loads a signing accounts, this could be a hardwar device.
+     * @param passwordResolver, it allows to resolve the password if it's necessary.
      * @returns {Account}
      */
-    public decrypt(password: Password): Account {
-        if (!this.isPasswordValid(password)) {
-            throw new ExpectedError('The password provided does not match your account password');
-        }
-        return this.simpleWallet.open(password);
-    }
+    public abstract async getSigningAccount(passwordResolver: () => Promise<Password>): Promise<SigningAccount>;
 
     /**
      * Returns a profile DTO
      * @returns {ProfileDTO}
      */
-    public toDTO(): ProfileDTO {
-        throw new Error('toDTO should be implemented in extended classes');
-    }
+    public abstract toDTO(): ProfileDTO;
 
     /**
      * Formats profile as a string.
      * @returns {string}
      */
     public toString(): string {
-        return this.table.toString();
+        return this.getTable(undefined).toString();
     }
 }

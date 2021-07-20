@@ -22,7 +22,6 @@ import { AnnounceTransactionsOptions } from '../../interfaces/announce.transacti
 import { Profile } from '../../models/profile.model';
 import { LinkActionResolver } from '../../resolvers/action.resolver';
 import { MaxFeeResolver } from '../../resolvers/maxFee.resolver';
-import { PasswordResolver } from '../../resolvers/password.resolver';
 import { PublicKeyResolver } from '../../resolvers/publicKey.resolver';
 import { TransactionSignatureOptions } from '../../services/transaction.signature.service';
 
@@ -51,8 +50,7 @@ export default class extends AnnounceTransactionsCommand {
     @metadata
     async execute(options: CommandOptions) {
         const profile = this.getProfile(options);
-        const password = await new PasswordResolver().resolve(options);
-        const account = profile.decrypt(password);
+        const account = await this.getSigningAccount(profile, options);
         const maxFee = await new MaxFeeResolver().resolve(options);
         const multisigSigner = await this.getMultisigSigner(options);
 

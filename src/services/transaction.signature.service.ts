@@ -1,18 +1,10 @@
-import {
-    Account,
-    AggregateTransaction,
-    Deadline,
-    HashLockTransaction,
-    PublicAccount,
-    SignedTransaction,
-    Transaction,
-    UInt64,
-} from 'symbol-sdk';
+import { AggregateTransaction, Deadline, HashLockTransaction, PublicAccount, SignedTransaction, Transaction, UInt64 } from 'symbol-sdk';
 import { AnnounceTransactionsOptions } from '../interfaces/announce.transactions.options';
 import { MultisigAccount } from '../models/multisig.types';
 import { Profile } from '../models/profile.model';
 import { MaxFeeResolver } from '../resolvers/maxFee.resolver';
 import { TransactionView } from '../views/transactions/details/transaction.view';
+import { SigningAccount } from './signing.service';
 
 /*
  *
@@ -41,9 +33,9 @@ export enum AnnounceMode {
 export interface TransactionSignatureOptions {
     /**
      * The account that will sign the transactions
-     * @type {Account}
+     * @type {SigningAccount}
      */
-    account: Account;
+    account: SigningAccount;
     /**
      * The transactions to sign
      * @type {Transaction[]}
@@ -162,11 +154,14 @@ export class TransactionSignatureService {
         } else if (this.announceMode === AnnounceMode.partial) {
             return this.signPartialTransactions(account);
         }
-        return transactions.map((transaction) => {
-            const signedTransaction = account.sign(transaction, this.profile.networkGenerationHash);
+
+        const signedTransactions: SignedTransaction[] = [];
+        for (const transaction of transactions) {
+            const signedTransaction = await account.sign(transaction, this.profile.networkGenerationHash);
             new TransactionView(transaction, signedTransaction, this.profile).print();
-            return signedTransaction;
-        });
+            signedTransactions.push(signedTransaction);
+        }
+        return signedTransactions;
     }
 
     /**
@@ -175,7 +170,7 @@ export class TransactionSignatureService {
      * @param {Account} account - Signer account.
      * @returns {Promise<SignedTransaction[]>}
      */
-    private async signPartialTransactions(account: Account): Promise<SignedTransaction[]> {
+    private async signPartialTransactions(account: SigningAccount): Promise<SignedTransaction[]> {
         const getTxSigner = (inx: number) => {
             if (this.transactionSigners) {
                 return this.transactionSigners[inx] ? this.transactionSigners[inx]! : this.signerPublicAccount;
@@ -190,9 +185,9 @@ export class TransactionSignatureService {
             this.maxFee,
         );
 
-        const signedAggregateTransaction = account.sign(aggregateTransaction, this.profile.networkGenerationHash);
+        const signedAggregateTransaction = await account.sign(aggregateTransaction, this.profile.networkGenerationHash);
         const hashLockTransaction = await this.createHashLockTransaction(signedAggregateTransaction);
-        const signedHashLockTransaction = account.sign(hashLockTransaction, this.profile.networkGenerationHash);
+        const signedHashLockTransaction = await account.sign(hashLockTransaction, this.profile.networkGenerationHash);
         new TransactionView(aggregateTransaction, signedAggregateTransaction, this.profile).print();
         new TransactionView(hashLockTransaction, signedHashLockTransaction, this.profile).print();
 
@@ -202,10 +197,10 @@ export class TransactionSignatureService {
     /**
      * Creates an aggregate complete transaction and returns it signed.
      * @private
-     * @param {Account} account - Signer account.
+     * @param {SigningAccount} account - Signer account.
      * @returns {SignedTransaction[]}
      */
-    private signCompleteTransactions(account: Account): SignedTransaction[] {
+    private async signCompleteTransactions(account: SigningAccount): Promise<SignedTransaction[]> {
         const getTxSigner = (inx: number) => {
             if (this.transactionSigners) {
                 return this.transactionSigners[inx] ? this.transactionSigners[inx]! : this.signerPublicAccount;
@@ -220,7 +215,7 @@ export class TransactionSignatureService {
             this.maxFee,
         );
 
-        const signedTransaction = account.sign(aggregateTransaction, this.profile.networkGenerationHash);
+        const signedTransaction = await account.sign(aggregateTransaction, this.profile.networkGenerationHash);
         new TransactionView(aggregateTransaction, signedTransaction, this.profile).print();
         return [signedTransaction];
     }

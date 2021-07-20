@@ -15,6 +15,7 @@
  * limitations under the License.
  *
  */
+import { ExpectedError } from 'clime';
 import * as prompts from 'prompts';
 import { Choices, ConfirmOptionType, InputOptionType, SelectOptionType } from './interfaces/options.interface';
 import { FormatterService } from './services/formatter.service';
@@ -26,14 +27,14 @@ import { Validator } from './validators/validator';
  */
 const onCancel = () => process.exit();
 
-export const OptionsChoiceResolver = async (
+export const OptionsChoiceResolver = async <T = any>(
     options: any,
     key: string,
     promptText: string,
-    choices: Choices[],
+    choices: Choices<T>[],
     type: SelectOptionType = 'select',
     validation: Validator<any> | undefined,
-) => {
+): Promise<T> => {
     if (options[key] !== undefined) {
         const title = `${options[key]}`;
         if (validation !== undefined) {
@@ -43,7 +44,14 @@ export const OptionsChoiceResolver = async (
                 return process.exit();
             }
         }
-        return choices.find((item) => item.title === title)?.value;
+        const value = choices.find((item) => item.title === title)?.value;
+        if (value === undefined) {
+            value == choices.find((item) => `${item.value}` === title)?.value;
+        }
+        if (value === undefined) {
+            throw new ExpectedError(`'${key}' option '${options[key]}' is not a valid choice!`);
+        }
+        return value;
     } else {
         return (
             await prompts(

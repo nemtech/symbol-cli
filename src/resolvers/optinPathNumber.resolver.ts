@@ -20,6 +20,7 @@ import { Options } from 'clime';
 import { Network } from 'symbol-hd-wallets';
 import { NetworkType } from 'symbol-sdk';
 import { publicKeys } from '../config/keys-whitelist';
+import { Choices } from '../interfaces/options.interface';
 import { OptionsChoiceResolver } from '../options-resolver';
 import { AccountService } from '../services/account.service';
 import { Resolver } from './resolver';
@@ -59,17 +60,18 @@ export class OptinPathNumberResolver implements Resolver {
             .filter(({ account }) => whitelisted.indexOf(account.publicKey) >= 0);
 
         const hdAccounts = AccountService.generateAccountsFromMnemonic(this.mnemonic, this.networkType, Network.SYMBOL);
-        const choices = [...optInAccounts, ...hdAccounts.map((account, inx) => ({ account, inx, optin: false }))].map(
-            ({ account, inx, optin }, index) => ({
-                title: `${index + 1} \t ${account.address.pretty()} ${optin ? '(Opt-in)' : ''}`,
-                value: {
-                    pathNumber: inx,
-                    optin,
-                },
-            }),
-        );
+        const choices: Choices<OptinPathNumber>[] = [
+            ...optInAccounts,
+            ...hdAccounts.map((account, inx) => ({ account, inx, optin: false })),
+        ].map(({ account, inx, optin }, index) => ({
+            title: `${index + 1} \t ${account.address.pretty()} ${optin ? '(Opt-in)' : ''}`,
+            value: {
+                pathNumber: inx,
+                optin,
+            },
+        }));
 
-        const value = await OptionsChoiceResolver(
+        const value = await OptionsChoiceResolver<OptinPathNumber>(
             options,
             'optinPathNumber',
             'Select the child account to import:',
@@ -77,6 +79,7 @@ export class OptinPathNumberResolver implements Resolver {
             'select',
             undefined,
         );
+
         return value;
     }
 }

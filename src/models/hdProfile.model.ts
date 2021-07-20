@@ -16,8 +16,11 @@
  *
  */
 
-import { Crypto, SimpleWallet } from 'symbol-sdk';
+import { HorizontalTable } from 'cli-table3';
+import { ExpectedError } from 'clime';
+import { Account, Crypto, Password, SimpleWallet } from 'symbol-sdk';
 import { DerivationService } from '../services/derivation.service';
+import { SigningAccount } from '../services/signing.service';
 import { NetworkCurrency } from './networkCurrency.model';
 import { CURRENT_PROFILE_VERSION, epochAdjustment, Profile, ProfileType } from './profile.model';
 import { HdProfileCreation } from './profileCreation.types';
@@ -29,7 +32,7 @@ import { HdProfileDTO } from './profileDTO.types';
  * @class HdProfile
  * @extends {Profile}
  */
-export class HdProfile extends Profile {
+export class HdProfile extends Profile<SimpleWallet> {
     /**
      * Creates a new HD Profile from a DTO
      * @static
@@ -57,7 +60,7 @@ export class HdProfile extends Profile {
      * @param {HdProfileCreation} args
      * @returns
      */
-    public static create(args: HdProfileCreation) {
+    public static create(args: HdProfileCreation): HdProfile {
         let privateKey = '';
         if (args.optin) {
             privateKey = DerivationService.getPrivateKeyFromOptinMnemonic(args.mnemonic, args.pathNumber, args.networkType);
@@ -94,21 +97,18 @@ export class HdProfile extends Profile {
      * @param {string} path
      */
     private constructor(
-        public readonly simpleWallet: SimpleWallet,
-        public readonly url: string,
-        public readonly networkGenerationHash: string,
-        public readonly epochAdjustment: number,
-        public readonly networkCurrency: NetworkCurrency,
-        public readonly version: number,
-        public readonly type: ProfileType,
-        public readonly isDefault: '0' | '1',
+        simpleWallet: SimpleWallet,
+        url: string,
+        networkGenerationHash: string,
+        epochAdjustment: number,
+        networkCurrency: NetworkCurrency,
+        version: number,
+        type: ProfileType,
+        isDefault: '0' | '1',
         public readonly encryptedPassphrase: string,
         public readonly path: string,
     ) {
         super(simpleWallet, url, networkGenerationHash, epochAdjustment, networkCurrency, version, type, isDefault);
-
-        this.table = this.getBaseTable();
-        this.table.push(['Path', `Path n. ${this.pathNumber + 1} (${this.path})`]);
     }
 
     /**
@@ -136,5 +136,44 @@ export class HdProfile extends Profile {
             encryptedPassphrase: this.encryptedPassphrase,
             path: this.path,
         };
+    }
+    /**
+     * Returns true if the password is valid.
+     * @param {Password} password.
+     * @returns {boolean}
+     */
+    public isPasswordValid(password: Password): boolean {
+        try {
+            this.simpleWallet.open(password);
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * Opens a wallet.
+     * @param password The  attribute "password" should contain the profile's password.
+     */
+    public decrypt(password: Password): Account {
+        if (!this.isPasswordValid(password)) {
+            throw new ExpectedError('The password provided does not match your account password');
+        }
+        return this.simpleWallet.open(password);
+    }
+
+    public getTable(password?: Password): HorizontalTable {
+        const table = this.getBaseTable();
+        if (password) {
+            table.push(['Password', password.value]);
+            table.push(['Mnemonic', Crypto.decrypt(this.encryptedPassphrase, password.value)]);
+            table.push(['Private key', this.decrypt(password).privateKey]);
+        }
+        table.push(['Path', `Path n. ${this.pathNumber + 1} (${this.path})`]);
+        return table;
+    }
+
+    public async getSigningAccount(passwordResolver: () => Promise<Password>): Promise<SigningAccount> {
+        throw this.decrypt(await passwordResolver());
     }
 }

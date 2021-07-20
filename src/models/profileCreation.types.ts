@@ -29,7 +29,6 @@ export interface ProfileCreationBase {
     networkCurrency: NetworkCurrency;
     epochAdjustment: number;
     networkType: NetworkType;
-    password: Password;
     url: string;
 }
 
@@ -41,6 +40,7 @@ export interface ProfileCreationBase {
  */
 export interface PrivateKeyProfileCreation extends ProfileCreationBase {
     privateKey: string;
+    password: Password;
 }
 
 /**
@@ -50,12 +50,24 @@ export interface PrivateKeyProfileCreation extends ProfileCreationBase {
  * @extends {ProfileCreationBase}
  */
 export interface HdProfileCreation extends ProfileCreationBase {
+    password: Password;
     mnemonic: string;
     pathNumber: number;
     optin?: boolean;
 }
 
 /**
+ * Arguments for Ledger profile creation
+ * @export
+ * @interface LedgerProfileCreation
+ * @extends {ProfileCreationBase}
+ */
+export interface LedgerProfileCreation extends ProfileCreationBase {
+    publicKey: string;
+    path: string;
+    optin: boolean;
+}
+/**
  * Type for profile creation arguments
  */
-export type ProfileCreation = PrivateKeyProfileCreation | HdProfileCreation;
+export type ProfileCreation = PrivateKeyProfileCreation | HdProfileCreation | LedgerProfileCreation;

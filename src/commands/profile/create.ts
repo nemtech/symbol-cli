@@ -18,22 +18,26 @@
 import { command, metadata } from 'clime';
 import { MnemonicPassPhrase } from 'symbol-hd-wallets';
 import { Account } from 'symbol-sdk';
-import { AccountCredentialsTable, CreateProfileCommand } from '../../interfaces/create.profile.command';
+import { CreateProfileCommand } from '../../interfaces/create.profile.command';
 import { CreateProfileOptions } from '../../interfaces/create.profile.options';
 import { ImportType } from '../../models/importType.enum';
-import { Profile } from '../../models/profile.model';
-import { ProfileCreationBase } from '../../models/profileCreation.types';
+import {
+    HdProfileCreation,
+    LedgerProfileCreation,
+    PrivateKeyProfileCreation,
+    ProfileCreationBase,
+} from '../../models/profileCreation.types';
 import { DefaultResolver } from '../../resolvers/default.resolver';
 import { EpochAdjustmentResolver } from '../../resolvers/epochAdjustment.resolver';
 import { GenerationHashResolver } from '../../resolvers/generationHash.resolver';
 import { ImportTypeResolver } from '../../resolvers/importType.resolver';
+import { LedgerResolver } from '../../resolvers/ledger.resolver';
 import { NetworkResolver } from '../../resolvers/network.resolver';
 import { NetworkCurrencyResolver } from '../../resolvers/networkCurrency.resolver';
 import { PasswordResolver } from '../../resolvers/password.resolver';
 import { ProfileNameResolver } from '../../resolvers/profile.resolver';
 import { URLResolver } from '../../resolvers/url.resolver';
 import { FormatterService } from '../../services/formatter.service';
-
 export class CommandOptions extends CreateProfileOptions {}
 
 @command({
@@ -49,7 +53,6 @@ export default class extends CreateProfileCommand {
         const networkType = await new NetworkResolver().resolve(options);
         options.url = await new URLResolver().resolve(options);
         const name = await new ProfileNameResolver().resolve(options);
-        const password = await new PasswordResolver().resolve(options);
         const isDefault = await new DefaultResolver().resolve(options);
 
         this.spinner.start();
@@ -60,6 +63,7 @@ export default class extends CreateProfileCommand {
 
         const importType = await new ImportTypeResolver().resolve(options);
 
+        const url = options.url;
         const baseArguments: ProfileCreationBase = {
             generationHash,
             epochAdjustment,
@@ -67,21 +71,35 @@ export default class extends CreateProfileCommand {
             name,
             networkCurrency,
             networkType,
-            password,
-            url: options.url,
+            url,
         };
 
-        let profile: Profile;
-
         if (importType === ImportType.PrivateKey) {
-            const { privateKey } = Account.generateNewAccount(networkType);
-            profile = this.createProfile({ ...baseArguments, privateKey });
-        } else {
+            const password = await new PasswordResolver().resolve(options);
+            const privateKey = Account.generateNewAccount(networkType).privateKey;
+            const args: PrivateKeyProfileCreation = { ...baseArguments, password, privateKey };
+            const profile = this.createProfile(args);
+            console.log(profile.getTable(password).toString());
+        } else if (importType === ImportType.Mnemonic) {
+            const password = await new PasswordResolver().resolve(options);
             const mnemonic = MnemonicPassPhrase.createRandom().plain;
-            profile = this.createProfile({ ...baseArguments, mnemonic, pathNumber: 1 });
+            const args: HdProfileCreation = {
+                ...baseArguments,
+                password,
+                mnemonic,
+                pathNumber: 1,
+            };
+            const profile = this.createProfile(args);
+            console.log(profile.getTable(password).toString());
+        } else if (importType === ImportType.Ledger) {
+            const ledgerArguments = await new LedgerResolver(networkType, false, this.spinner).resolve(options);
+            const args: LedgerProfileCreation = { ...baseArguments, ...ledgerArguments };
+            const profile = this.createProfile(args);
+            console.log(profile.getTable(undefined).toString());
+        } else {
+            throw new Error(`Invalid import type ${importType}`);
         }
 
-        console.log(AccountCredentialsTable.createFromProfile(profile, password).toString());
-        console.log(FormatterService.success('Stored ' + name + ' profile'));
+        console.log(FormatterService.success(`Stored ${name} profile`));
     }
 }

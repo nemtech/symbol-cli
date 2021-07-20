@@ -26,7 +26,6 @@ import { DurationResolver } from '../../resolvers/duration.resolver';
 import { HashAlgorithmResolver } from '../../resolvers/hashAlgorithm.resolver';
 import { MaxFeeResolver } from '../../resolvers/maxFee.resolver';
 import { MosaicIdAliasResolver } from '../../resolvers/mosaic.resolver';
-import { PasswordResolver } from '../../resolvers/password.resolver';
 import { SecretResolver } from '../../resolvers/secret.resolver';
 import { TransactionSignatureOptions } from '../../services/transaction.signature.service';
 
@@ -81,8 +80,7 @@ export default class extends AnnounceTransactionsCommand {
     @metadata
     async execute(options: CommandOptions) {
         const profile = this.getProfile(options);
-        const password = await new PasswordResolver().resolve(options);
-        const account = profile.decrypt(password);
+        const account = await this.getSigningAccount(profile, options);
         const mosaicId = await new MosaicIdAliasResolver().resolve(options, 'Enter the locked mosaic identifier or alias:');
         const amount = await new AmountResolver().resolve(options, 'Enter the absolute amount of mosaic units to lock:');
         const recipientAddress = await new UnresolvedAddressResolver().resolve(

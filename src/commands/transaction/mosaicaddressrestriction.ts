@@ -23,7 +23,6 @@ import { UnresolvedAddressResolver } from '../../resolvers/address.resolver';
 import { KeyResolver } from '../../resolvers/key.resolver';
 import { MaxFeeResolver } from '../../resolvers/maxFee.resolver';
 import { MosaicIdAliasResolver } from '../../resolvers/mosaic.resolver';
-import { PasswordResolver } from '../../resolvers/password.resolver';
 import { RestrictionValueResolver } from '../../resolvers/restrictionValue.resolver';
 import { TransactionSignatureOptions } from '../../services/transaction.signature.service';
 
@@ -64,8 +63,7 @@ export default class extends AnnounceTransactionsCommand {
     @metadata
     async execute(options: CommandOptions) {
         const profile = this.getProfile(options);
-        const password = await new PasswordResolver().resolve(options);
-        const account = profile.decrypt(password);
+        const account = await this.getSigningAccount(profile, options);
         const mosaicId = await new MosaicIdAliasResolver().resolve(options);
         const targetAddress = await new UnresolvedAddressResolver().resolve(
             options,

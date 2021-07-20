@@ -24,7 +24,6 @@ import { ActionType } from '../../models/action.enum';
 import { ActionResolver } from '../../resolvers/action.resolver';
 import { MaxFeeResolver } from '../../resolvers/maxFee.resolver';
 import { MosaicIdAliasResolver } from '../../resolvers/mosaic.resolver';
-import { PasswordResolver } from '../../resolvers/password.resolver';
 import { RestrictionAccountMosaicFlagsResolver } from '../../resolvers/restrictionAccount.resolver';
 import { TransactionSignatureOptions } from '../../services/transaction.signature.service';
 
@@ -59,8 +58,7 @@ export default class extends AnnounceTransactionsCommand {
     @metadata
     async execute(options: CommandOptions) {
         const profile = this.getProfile(options);
-        const password = await new PasswordResolver().resolve(options);
-        const account = profile.decrypt(password);
+        const account = await this.getSigningAccount(profile, options);
         const action = await new ActionResolver().resolve(options);
         const flags = await new RestrictionAccountMosaicFlagsResolver().resolve(options);
         const mosaic = await new MosaicIdAliasResolver().resolve(options);

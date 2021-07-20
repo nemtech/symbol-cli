@@ -17,18 +17,21 @@
  */
 
 import { Command, ExpectedError } from 'clime';
-import ora from 'ora';
+import ora, { Ora } from 'ora';
 import config from '../config/app.conf';
 import { Profile } from '../models/profile.model';
+import { PasswordResolver } from '../resolvers/password.resolver';
 import { ProfileRepository } from '../respositories/profile.repository';
 import { ProfileService } from '../services/profile.service';
+import { SigningAccount } from '../services/signing.service';
+import { AnnounceTransactionsOptions } from './announce.transactions.options';
 import { ProfileOptions } from './profile.options';
 
 /**
  * Base command class to use the stored profile.
  */
 export abstract class ProfileCommand extends Command {
-    public spinner: any;
+    public spinner: Ora;
     private readonly profileService: ProfileService;
     /**
      * Constructor.
@@ -59,6 +62,16 @@ export abstract class ProfileCommand extends Command {
                     "if not, use 'symbol-cli profile create' to create a new profile",
             );
         }
+    }
+
+    /**
+     *  Gets a signing account based on the profile.
+     *
+     * @param profile the profile
+     * @param options the options
+     */
+    protected async getSigningAccount(profile: Profile, options: AnnounceTransactionsOptions): Promise<SigningAccount> {
+        return await profile.getSigningAccount(() => new PasswordResolver().resolve(options));
     }
 
     /**

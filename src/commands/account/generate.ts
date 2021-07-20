@@ -15,14 +15,13 @@
  * limitations under the License.
  *
  */
-import { command, metadata, option } from 'clime';
+import { command, ExpectedError, metadata, option } from 'clime';
 import { MnemonicPassPhrase } from 'symbol-hd-wallets';
 import { Account } from 'symbol-sdk';
 import { AccountCredentialsTable, CreateProfileCommand } from '../../interfaces/create.profile.command';
 import { CreateProfileOptions } from '../../interfaces/create.profile.options';
 import { ImportType } from '../../models/importType.enum';
-import { Profile } from '../../models/profile.model';
-import { ProfileCreationBase } from '../../models/profileCreation.types';
+import { HdProfileCreation, PrivateKeyProfileCreation, ProfileCreationBase } from '../../models/profileCreation.types';
 import { DefaultResolver } from '../../resolvers/default.resolver';
 import { EpochAdjustmentResolver } from '../../resolvers/epochAdjustment.resolver';
 import { GenerationHashResolver } from '../../resolvers/generationHash.resolver';
@@ -59,12 +58,15 @@ export default class extends CreateProfileCommand {
         const networkType = await new NetworkResolver().resolve(options);
         const save = await new SaveResolver().resolve(options);
         const importType = await new ImportTypeResolver().resolve(options);
+        if (importType == ImportType.Ledger) {
+            throw new ExpectedError('Ledger cannot be generated, use the profile import or profile create command!');
+        }
 
         if (!save) {
             if (importType === ImportType.PrivateKey) {
                 const account = Account.generateNewAccount(networkType);
                 console.log(AccountCredentialsTable.createFromAccount(account).toString());
-            } else {
+            } else if (importType === ImportType.Mnemonic) {
                 const pathNumber = await new PathNumberResolver().resolve(options);
                 const mnemonic = MnemonicPassPhrase.createRandom().plain;
                 const privateKey = DerivationService.getPrivateKeyFromMnemonic(mnemonic, pathNumber, networkType);
@@ -75,6 +77,8 @@ export default class extends CreateProfileCommand {
                         pathNumber,
                     ).toString(),
                 );
+            } else {
+                throw new Error('Ledger cannot be generated, use the profile import or profile create command!');
             }
             return;
         }
@@ -97,21 +101,23 @@ export default class extends CreateProfileCommand {
             name,
             networkCurrency,
             networkType,
-            password,
             url: options.url,
         };
 
-        let profile: Profile;
-
         if (importType === ImportType.PrivateKey) {
             const { privateKey } = Account.generateNewAccount(networkType);
-            profile = this.createProfile({ ...baseArguments, privateKey });
-        } else {
+            const args: PrivateKeyProfileCreation = { ...baseArguments, password, privateKey };
+            const profile = this.createProfile(args);
+            console.log(profile.getTable(password).toString());
+        } else if (importType === ImportType.Mnemonic) {
             const mnemonic = MnemonicPassPhrase.createRandom().plain;
-            profile = this.createProfile({ ...baseArguments, mnemonic, pathNumber: 1 });
+            const args: HdProfileCreation = { ...baseArguments, password, mnemonic, pathNumber: 1 };
+            const profile = this.createProfile(args);
+            console.log(profile.getTable(password).toString());
+        } else {
+            throw new Error('Ledger cannot be generated, use the profile import or profile create command!');
         }
 
-        console.log(AccountCredentialsTable.createFromProfile(profile, password).toString());
         console.log(FormatterService.success('Stored ' + name + ' profile'));
     }
 }

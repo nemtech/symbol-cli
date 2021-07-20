@@ -23,7 +23,6 @@ import { AddressResolver } from '../../resolvers/address.resolver';
 import { KeyResolver } from '../../resolvers/key.resolver';
 import { MaxFeeResolver } from '../../resolvers/maxFee.resolver';
 import { MosaicIdResolver } from '../../resolvers/mosaic.resolver';
-import { PasswordResolver } from '../../resolvers/password.resolver';
 import { StringResolver } from '../../resolvers/string.resolver';
 import { TransactionSignatureOptions } from '../../services/transaction.signature.service';
 
@@ -64,8 +63,7 @@ export default class extends AnnounceTransactionsCommand {
     @metadata
     async execute(options: CommandOptions) {
         const profile = this.getProfile(options);
-        const password = await new PasswordResolver().resolve(options);
-        const account = profile.decrypt(password);
+        const account = await this.getSigningAccount(profile, options);
         const mosaic = await new MosaicIdResolver().resolve(options);
         const targetAddress = await new AddressResolver().resolve(
             options,
@@ -83,7 +81,7 @@ export default class extends AnnounceTransactionsCommand {
         const metadataTransaction = await metadataTransactionService
             .createMosaicMetadataTransaction(
                 Deadline.create(profile.epochAdjustment),
-                account.networkType,
+                profile.networkType,
                 targetAddress,
                 mosaic,
                 key,

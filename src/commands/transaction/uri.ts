@@ -18,7 +18,6 @@
 import { command, metadata, option } from 'clime';
 import { AnnounceTransactionsCommand } from '../../interfaces/announce.transactions.command';
 import { AnnounceTransactionsOptions } from '../../interfaces/announce.transactions.options';
-import { PasswordResolver } from '../../resolvers/password.resolver';
 import { TransactionURIResolver } from '../../resolvers/transactionURI.resolver';
 import { TransactionSignatureOptions } from '../../services/transaction.signature.service';
 import { WebhookService } from '../../services/webhook.service';
@@ -42,8 +41,7 @@ export default class extends AnnounceTransactionsCommand {
     @metadata
     async execute(options: CommandOptions) {
         const profile = this.getProfile(options);
-        const password = await new PasswordResolver().resolve(options);
-        const account = profile.decrypt(password);
+        const account = await this.getSigningAccount(profile, options);
 
         const transactionURI = await new TransactionURIResolver().resolve(options);
         const transaction = transactionURI.toTransaction();

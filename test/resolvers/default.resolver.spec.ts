@@ -35,6 +35,7 @@ describe('Default resolver', () => {
             'private-key': true,
             mnemonic: false,
             hd: false,
+            ledger: false,
         };
         expect(await new DefaultResolver().resolve(options)).to.be.equal(true);
     });

@@ -40,7 +40,7 @@ export abstract class AnnounceTransactionsCommand extends ProfileCommand {
      * @protected
      * @param {AnnounceTransactionsOptions} options
      * @throws {ExpectedError}
-     * @returns {(Promise<MultisigAccountInfo | null>)}
+     * @returns {(Promise<MultisigAccount | null>)}
      */
     protected async getMultisigSigner(options: AnnounceTransactionsOptions): Promise<MultisigAccount | null> {
         const profile = this.getProfile(options);
@@ -96,8 +96,12 @@ export abstract class AnnounceTransactionsCommand extends ProfileCommand {
         signatureOptions: TransactionSignatureOptions,
         options: AnnounceTransactionsOptions,
     ): Promise<SignedTransaction[]> {
-        const profile = this.getProfile(options);
-        return TransactionSignatureService.create(profile, options).signTransactions(signatureOptions);
+        try {
+            const profile = this.getProfile(options);
+            return await TransactionSignatureService.create(profile, options).signTransactions(signatureOptions);
+        } finally {
+            await signatureOptions.account.close();
+        }
     }
 
     /**

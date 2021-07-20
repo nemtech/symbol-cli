@@ -24,7 +24,6 @@ import { UnresolvedAddressResolver } from '../../resolvers/address.resolver';
 import { MaxFeeResolver } from '../../resolvers/maxFee.resolver';
 import { MessageResolver } from '../../resolvers/message.resolver';
 import { MosaicsResolver } from '../../resolvers/mosaic.resolver';
-import { PasswordResolver } from '../../resolvers/password.resolver';
 import { PublicKeyResolver } from '../../resolvers/publicKey.resolver';
 import { TransactionSignatureOptions } from '../../services/transaction.signature.service';
 
@@ -73,8 +72,7 @@ export default class extends AnnounceTransactionsCommand {
     @metadata
     async execute(options: CommandOptions) {
         const profile = this.getProfile(options);
-        const password = await new PasswordResolver().resolve(options);
-        const account = profile.decrypt(password);
+        const account = await this.getSigningAccount(profile, options);
         const mosaics = await new MosaicsResolver().resolve(options);
         let recipientAddress: UnresolvedAddress;
         let message = EmptyMessage;
@@ -87,7 +85,7 @@ export default class extends AnnounceTransactionsCommand {
             );
             recipientAddress = recipientPublicAccount.address;
             const rawMessage = await new MessageResolver().resolve(options);
-            message = account.encryptMessage(rawMessage, recipientPublicAccount);
+            message = await account.encryptMessage(rawMessage, recipientPublicAccount);
         } else {
             recipientAddress = await new UnresolvedAddressResolver().resolve(
                 options,

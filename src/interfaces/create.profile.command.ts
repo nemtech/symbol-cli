@@ -19,10 +19,9 @@
 import * as Table from 'cli-table3';
 import { HorizontalTable } from 'cli-table3';
 import { Command, ExpectedError } from 'clime';
-import ora from 'ora';
-import { Account, Crypto, Password } from 'symbol-sdk';
+import ora, { Ora } from 'ora';
+import { Account, Password, PublicAccount } from 'symbol-sdk';
 import config from '../config/app.conf';
-import { HdProfile } from '../models/hdProfile.model';
 import { Profile } from '../models/profile.model';
 import { ProfileCreation } from '../models/profileCreation.types';
 import { ProfileRepository } from '../respositories/profile.repository';
@@ -32,9 +31,9 @@ import { ProfileService } from '../services/profile.service';
 
 export class AccountCredentialsTable {
     private readonly table: HorizontalTable;
-    private readonly account: Account;
+    private readonly account: Account | PublicAccount;
 
-    private constructor(args: { account: Account; password?: Password; mnemonic?: string; pathNumber?: number | null }) {
+    private constructor(args: { account: Account | PublicAccount; password?: Password; mnemonic?: string; pathNumber?: number | null }) {
         this.account = args.account;
 
         this.table = new Table({
@@ -52,29 +51,13 @@ export class AccountCredentialsTable {
             this.table.push(['Mnemonic', args.mnemonic]);
         }
         if (args.pathNumber !== undefined && args.pathNumber !== null) {
+            const networkType = args.account.address.networkType;
             this.table.push([
                 'Path',
                 // Address paths are 0-based but shown as 1-based to the users
-                `Seed wallet n. ${args.pathNumber + 1} (${DerivationService.getPathFromPathNumber(
-                    args.pathNumber,
-                    args.account.networkType,
-                )})`,
+                `Seed wallet n. ${args.pathNumber + 1} (${DerivationService.getPathFromPathNumber(args.pathNumber, networkType)})`,
             ]);
         }
-    }
-
-    public static createFromProfile(profile: Profile, password: Password): AccountCredentialsTable {
-        let mnemonic;
-        let pathNumber;
-
-        const account = profile.simpleWallet.open(password);
-
-        if (profile instanceof HdProfile) {
-            mnemonic = Crypto.decrypt(profile.encryptedPassphrase, password.value);
-            pathNumber = profile.pathNumber;
-        }
-
-        return new AccountCredentialsTable({ account, password, mnemonic, pathNumber });
     }
 
     public static createFromAccount(account: Account, mnemonic?: string, pathNumber?: number): AccountCredentialsTable {
@@ -82,11 +65,10 @@ export class AccountCredentialsTable {
     }
 
     private renderAccountProperties() {
-        this.table.push(
-            ['Address', this.account.address.pretty()],
-            ['Public Key', this.account.publicKey],
-            ['Private Key', this.account.privateKey],
-        );
+        this.table.push(['Address', this.account.address.pretty()], ['Public Key', this.account.publicKey]);
+        if (this.account instanceof Account) {
+            this.table.push(['Private Key', this.account.privateKey]);
+        }
     }
 
     public toString(): string {
@@ -101,7 +83,7 @@ export class AccountCredentialsTable {
  * Base command class to create a new profile.
  */
 export abstract class CreateProfileCommand extends Command {
-    public spinner: any;
+    public spinner: Ora;
     private readonly profileRepository: ProfileRepository;
     private readonly profileService: ProfileService;
 
@@ -118,7 +100,7 @@ export abstract class CreateProfileCommand extends Command {
     /**
      * Creates a new profile.
      * @protected
-     * @param {ProfileCreation} Profile creation arguments
+     * @param {ProfileCreation} args creation arguments
      * @returns {Profile}
      */
     protected createProfile(args: ProfileCreation): Profile {

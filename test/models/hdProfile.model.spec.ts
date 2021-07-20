@@ -21,6 +21,7 @@ import { NetworkType, Password, SimpleWallet } from 'symbol-sdk';
 import { HdProfile } from '../../src/models/hdProfile.model';
 import { NetworkCurrency } from '../../src/models/networkCurrency.model';
 import { epochAdjustment } from '../../src/models/profile.model';
+import { HdProfileDTO } from '../../src/models/profileDTO.types';
 
 const networkCurrency = NetworkCurrency.createFromDTO({ namespaceId: 'symbol.xym', divisibility: 6 });
 
@@ -101,7 +102,7 @@ describe('HdProfile MainNet', () => {
     });
 
     it('should create a DTO', () => {
-        const DTO = {
+        const DTO: HdProfileDTO = {
             simpleWallet: {
                 name: 'profile name',
                 network: 152,
@@ -245,7 +246,7 @@ describe('HdProfile TestNet', () => {
     });
 
     it('should create a DTO', () => {
-        const DTO = {
+        const DTO: HdProfileDTO = {
             simpleWallet: {
                 name: 'profile name',
                 network: 152,

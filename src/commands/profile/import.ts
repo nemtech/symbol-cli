@@ -16,18 +16,24 @@
  *
  */
 import { command, metadata } from 'clime';
-import { AccountCredentialsTable, CreateProfileCommand } from '../../interfaces/create.profile.command';
+import { CreateProfileCommand } from '../../interfaces/create.profile.command';
 import { ImportProfileOptions } from '../../interfaces/importProfile.options';
 import { ImportType } from '../../models/importType.enum';
-import { Profile } from '../../models/profile.model';
-import { HdProfileCreation, PrivateKeyProfileCreation, ProfileCreationBase } from '../../models/profileCreation.types';
+import {
+    HdProfileCreation,
+    LedgerProfileCreation,
+    PrivateKeyProfileCreation,
+    ProfileCreationBase,
+} from '../../models/profileCreation.types';
 import { DefaultResolver } from '../../resolvers/default.resolver';
 import { EpochAdjustmentResolver } from '../../resolvers/epochAdjustment.resolver';
 import { GenerationHashResolver } from '../../resolvers/generationHash.resolver';
 import { ImportTypeResolver } from '../../resolvers/importType.resolver';
+import { LedgerResolver } from '../../resolvers/ledger.resolver';
 import { MnemonicResolver } from '../../resolvers/mnemonic.resolver';
 import { NetworkResolver } from '../../resolvers/network.resolver';
 import { NetworkCurrencyResolver } from '../../resolvers/networkCurrency.resolver';
+import { OptinResolver } from '../../resolvers/optin.resolver';
 import { OptinPathNumber, OptinPathNumberResolver } from '../../resolvers/optinPathNumber.resolver';
 import { PasswordResolver } from '../../resolvers/password.resolver';
 import { PathNumberResolver } from '../../resolvers/pathNumber.resolver';
@@ -49,7 +55,6 @@ export default class extends CreateProfileCommand {
         const networkType = await new NetworkResolver().resolve(options);
         options.url = await new URLResolver().resolve(options);
         const name = await new ProfileNameResolver().resolve(options);
-        const password = await new PasswordResolver().resolve(options);
         const isDefault = await new DefaultResolver().resolve(options);
 
         this.spinner.start();
@@ -60,6 +65,7 @@ export default class extends CreateProfileCommand {
 
         const importType = await new ImportTypeResolver().resolve(options);
 
+        const url = options.url;
         const baseArguments: ProfileCreationBase = {
             generationHash,
             epochAdjustment,
@@ -67,28 +73,38 @@ export default class extends CreateProfileCommand {
             name,
             networkCurrency,
             networkType,
-            password,
-            url: options.url,
+            url,
         };
 
-        let profile: Profile;
-
         if (importType === ImportType.PrivateKey) {
+            const password = await new PasswordResolver().resolve(options);
             const privateKey = await new PrivateKeyResolver().resolve(options);
-            profile = this.createProfile({ ...baseArguments, privateKey } as PrivateKeyProfileCreation);
-        } else {
+            const args: PrivateKeyProfileCreation = { ...baseArguments, password, privateKey };
+            const profile = this.createProfile(args);
+            console.log(profile.getTable(password).toString());
+        } else if (importType === ImportType.Mnemonic) {
+            const password = await new PasswordResolver().resolve(options);
             const mnemonic = await new MnemonicResolver().resolve(options);
             let optinPathNumber: OptinPathNumber;
-
             if (options.pathNumber) {
-                optinPathNumber = { pathNumber: await new PathNumberResolver().resolve(options), optin: options.optin };
+                const optin = await new OptinResolver().resolve(options);
+                optinPathNumber = { pathNumber: await new PathNumberResolver().resolve(options), optin: optin };
             } else {
                 optinPathNumber = await new OptinPathNumberResolver(mnemonic, networkType).resolve(options);
             }
-            profile = this.createProfile({ ...baseArguments, mnemonic, ...optinPathNumber } as HdProfileCreation);
+            const args: HdProfileCreation = { ...baseArguments, password, mnemonic, ...optinPathNumber };
+            const profile = this.createProfile(args);
+            console.log(profile.getTable(password).toString());
+        } else if (importType === ImportType.Ledger) {
+            const optin = await new OptinResolver().resolve(options);
+            const ledgerArguments = await new LedgerResolver(networkType, optin, this.spinner).resolve(options);
+            const args: LedgerProfileCreation = { ...baseArguments, ...ledgerArguments };
+            const profile = this.createProfile(args);
+            console.log(profile.getTable(undefined).toString());
+        } else {
+            throw new Error(`Invalid import type ${importType}`);
         }
 
-        console.log(AccountCredentialsTable.createFromProfile(profile, password).toString());
-        console.log(FormatterService.success('Stored ' + name + ' profile'));
+        console.log(FormatterService.success(`Stored ${name} profile`));
     }
 }

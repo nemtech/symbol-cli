@@ -33,6 +33,7 @@ describe('Save resolver', () => {
             namespaceId: '',
             divisibility: 0,
             hd: false,
+            ledger: false,
         };
         expect(await new SaveResolver().resolve(options)).to.be.equal(true);
     });

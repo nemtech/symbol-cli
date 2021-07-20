@@ -18,9 +18,10 @@
 import * as fs from 'fs';
 import { ProfileMigrations } from '../migrations/profile.migrations';
 import { HdProfile } from '../models/hdProfile.model';
+import { LedgerProfile } from '../models/ledgerProfile.model';
 import { PrivateKeyProfile } from '../models/privateKeyProfile.model';
 import { CURRENT_PROFILE_VERSION, Profile, ProfileRecord } from '../models/profile.model';
-import { ProfileDTO } from '../models/profileDTO.types';
+import { HdProfileDTO, LedgerProfileDTO, PrivateKeyProfileDto, ProfileDTO } from '../models/profileDTO.types';
 
 /**
  * Profile repository
@@ -219,9 +220,15 @@ export class ProfileRepository {
      * @returns {Profile}
      */
     private createProfileFromDTO(args: ProfileDTO): Profile {
-        if ('encryptedPassphrase' in args) {
-            return HdProfile.createFromDTO(args);
+        if (args.type == 'HD') {
+            return HdProfile.createFromDTO(args as HdProfileDTO);
         }
-        return PrivateKeyProfile.createFromDTO(args);
+        if (args.type == 'PrivateKey') {
+            return PrivateKeyProfile.createFromDTO(args as PrivateKeyProfileDto);
+        }
+        if (args.type == 'Ledger') {
+            return LedgerProfile.createFromDTO(args as LedgerProfileDTO);
+        }
+        throw new Error(`Invalid profile type ${args.type}`);
     }
 }

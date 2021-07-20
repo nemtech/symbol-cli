@@ -23,7 +23,6 @@ import { LinkActionResolver } from '../../resolvers/action.resolver';
 import { AddressResolver } from '../../resolvers/address.resolver';
 import { MaxFeeResolver } from '../../resolvers/maxFee.resolver';
 import { NamespaceNameResolver } from '../../resolvers/namespace.resolver';
-import { PasswordResolver } from '../../resolvers/password.resolver';
 import { TransactionSignatureOptions } from '../../services/transaction.signature.service';
 
 export class CommandOptions extends AnnounceTransactionsOptions {
@@ -57,8 +56,7 @@ export default class extends AnnounceTransactionsCommand {
     @metadata
     async execute(options: CommandOptions) {
         const profile = this.getProfile(options);
-        const password = await new PasswordResolver().resolve(options);
-        const account = profile.decrypt(password);
+        const account = await this.getSigningAccount(profile, options);
         const namespaceId = await new NamespaceNameResolver().resolve(options);
         const address = await new AddressResolver().resolve(options);
         const action = await new LinkActionResolver().resolve(options);

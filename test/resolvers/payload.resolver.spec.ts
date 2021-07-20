@@ -32,6 +32,7 @@ describe('Payload resolver', () => {
         );
         const payload = transaction.serialize();
         const options = { payload } as any;
+        console.log(payload);
         expect(await new PayloadResolver().resolve(options)).to.be.deep.equal(transaction);
     });
 

@@ -16,14 +16,7 @@
  *
  */
 import { command, metadata, option } from 'clime';
-import {
-    AggregateTransaction,
-    CosignatureSignedTransaction,
-    CosignatureTransaction,
-    Transaction,
-    TransactionGroup,
-    TransactionMapping,
-} from 'symbol-sdk';
+import { AggregateTransaction, Convert, CosignatureSignedTransaction, Transaction, TransactionGroup, TransactionMapping } from 'symbol-sdk';
 import { AnnounceTransactionsOptions } from '../../interfaces/announce.transactions.options';
 import { ProfileCommand } from '../../interfaces/profile.command';
 import { Profile } from '../../models/profile.model';
@@ -74,16 +67,15 @@ export default class extends ProfileCommand {
             const repositoryFactory = this.profile.repositoryFactory;
             const transactionHttp = repositoryFactory.createTransactionRepository();
             const hash = await new HashResolver().resolve(options, 'Enter the hash of the aggregate bonded transaction to cosign: ');
-
             this.spinner.start();
-
             transactionHttp.getTransaction(hash, TransactionGroup.Partial).subscribe(
                 async (transaction: Transaction) => {
+                    this.spinner.stop();
                     console.log(FormatterService.title('Transaction to cosign:'));
                     new TransactionView(transaction, undefined, this.profile).print();
-                    const signedCosignature = await this.getSignedAggregateBondedCosignature(transaction as AggregateTransaction, hash);
-                    if (signedCosignature) {
-                        this.announceAggregateBondedCosignature(signedCosignature);
+                    const cosignedTransaction = await this.getSignedAggregateBondedCosignature(transaction as AggregateTransaction, hash);
+                    if (cosignedTransaction) {
+                        this.announceAggregateBondedCosignature(cosignedTransaction);
                     }
                 },
                 (err) => {
@@ -104,7 +96,7 @@ export default class extends ProfileCommand {
             const transaction = TransactionMapping.createFromPayload(txPayload);
             console.log(FormatterService.success('Transaction to cosign:'));
             new TransactionView(transaction, undefined, this.profile).print();
-            const cosignedTransaction = await this.getSignedAggregatePayloadCosignature(txPayload);
+            const cosignedTransaction = await this.getSignedAggregatePayloadCosignature(transaction as AggregateTransaction, txPayload);
             if (cosignedTransaction) {
                 console.log('Co-signed transaction:' + JSON.stringify(cosignedTransaction));
             }
@@ -114,20 +106,31 @@ export default class extends ProfileCommand {
     /**
      * Attempts to cosign an aggregated transaction with transaction payload (off chain)
      * @private
+     * @param transaction the transaction
      * @param {string} payload of the transaction to be cosigned
      * @returns {(CosignatureSignedTransaction | null)}
      */
-    private async getSignedAggregatePayloadCosignature(payload: string): Promise<CosignatureSignedTransaction | null> {
+    private async getSignedAggregatePayloadCosignature(
+        transaction: Transaction,
+        payload: string,
+    ): Promise<CosignatureSignedTransaction | null> {
+        const account = await this.profile.getSigningAccount(() => new PasswordResolver().resolve(this.options));
         try {
-            const password = await new PasswordResolver().resolve(this.options);
-            const account = this.profile.decrypt(password);
-            return CosignatureTransaction.signTransactionPayload(account, payload, this.profile.networkGenerationHash);
+            const hash = Transaction.createTransactionHash(payload, Array.from(Convert.hexToUint8(this.profile.networkGenerationHash)));
+            const signature = await account.cosignTransaction(transaction, hash);
+            return new CosignatureSignedTransaction(hash, signature, account.publicKey);
         } catch (err) {
             this.spinner.stop();
             console.log(
-                FormatterService.error('The profile ' + this.profile.name + ' cannot cosign the transaction with payload ' + payload),
+                FormatterService.error(
+                    `The profile ${this.profile.name} cannot cosign the transaction with payload ${payload}.  Error: ${
+                        err.message || 'Unknown'
+                    }`,
+                ),
             );
             return null;
+        } finally {
+            await account.close();
         }
     }
 
@@ -139,20 +142,22 @@ export default class extends ProfileCommand {
      * @returns {(CosignatureSignedTransaction | null)}
      */
     private async getSignedAggregateBondedCosignature(
-        transaction: AggregateTransaction,
+        transaction: Transaction,
         hash: string,
     ): Promise<CosignatureSignedTransaction | null> {
+        const account = await this.profile.getSigningAccount(() => new PasswordResolver().resolve(this.options));
         try {
-            const cosignatureTransaction = CosignatureTransaction.create(transaction);
-            this.spinner.stop();
-            const password = await new PasswordResolver().resolve(this.options);
-            this.spinner.start();
-            const account = this.profile.decrypt(password);
-            return account.signCosignatureTransaction(cosignatureTransaction);
+            const signature = await account.cosignTransaction(transaction, hash);
+            return new CosignatureSignedTransaction(hash, signature, account.publicKey);
         } catch (err) {
-            this.spinner.stop();
-            console.log(FormatterService.error('The profile ' + this.profile.name + ' cannot cosign the transaction with hash ' + hash));
+            console.log(
+                FormatterService.error(
+                    `The profile ${this.profile.name} cannot cosign the transaction with hash ${hash}. Error: ${err.message || 'Unknown'}`,
+                ),
+            );
             return null;
+        } finally {
+            await account.close();
         }
     }
 
@@ -164,6 +169,7 @@ export default class extends ProfileCommand {
      */
     private async announceAggregateBondedCosignature(signedCosignature: CosignatureSignedTransaction): Promise<void> {
         try {
+            this.spinner.start();
             await this.profile.repositoryFactory
                 .createTransactionRepository()
                 .announceAggregateBondedCosignature(signedCosignature)

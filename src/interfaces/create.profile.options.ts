@@ -29,6 +29,12 @@ export class CreateProfileOptions extends ProfileOptions {
     hd: boolean;
 
     @option({
+        description: '(Optional) Create an Ledger wallet.',
+        toggle: true,
+    })
+    ledger: boolean;
+
+    @option({
         flag: 'u',
         description: '(Optional) When saving profile, provide a Symbol Node URL. Example: http://localhost:3000',
     })

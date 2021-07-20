@@ -17,21 +17,53 @@
  */
 import { ISimpleWalletDTO } from 'symbol-sdk';
 import { NetworkCurrencyDTO } from './networkCurrency.model';
+import { ProfileType } from './profile.model';
+
+/**
+ * Used to instantiate a SimpleWallet
+ */
+export interface ICliWalletDTO {
+    name: string;
+    network: number;
+    address: {
+        address: string;
+        networkType: number;
+    };
+    creationDate: string;
+    schema: string;
+}
+
+/**
+ * Used to instantiate a SimpleWallet
+ */
+export interface ILedgerWalletDTO extends ICliWalletDTO {
+    path: string;
+    publicKey: string;
+    optin: boolean;
+}
 
 /**
  * Base properties of all profiles
- * @export
+ *
  * @interface ProfileDTOBase
  */
 export interface ProfileDTOBase {
-    simpleWallet: ISimpleWalletDTO;
     url: string;
     networkGenerationHash: string;
     epochAdjustment: number | undefined;
     networkCurrency: NetworkCurrencyDTO;
     version: number;
     default: string;
-    type: string;
+    type: ProfileType;
+}
+
+/**
+ * Private key wallet.
+ * @export
+ * @interface ProfileDTOBase
+ */
+export interface PrivateKeyProfileDto extends ProfileDTOBase {
+    simpleWallet: ISimpleWalletDTO;
 }
 
 /**
@@ -40,8 +72,18 @@ export interface ProfileDTOBase {
  * @extends {ProfileDTOBase}
  */
 export interface HdProfileDTO extends ProfileDTOBase {
+    simpleWallet: ISimpleWalletDTO;
     encryptedPassphrase: string;
     path: string;
 }
 
-export type ProfileDTO = ProfileDTOBase | HdProfileDTO;
+/**
+ * Ledger Profile DTO
+ * @interface LedgerProfileDTO
+ * @extends {ProfileDTOBase}
+ */
+export interface LedgerProfileDTO extends ProfileDTOBase {
+    simpleWallet: ILedgerWalletDTO;
+}
+
+export type ProfileDTO = PrivateKeyProfileDto | HdProfileDTO | LedgerProfileDTO;

@@ -15,7 +15,7 @@
  * limitations under the License.
  *
  */
-import ora from 'ora';
+import ora, { Ora } from 'ora';
 import { merge } from 'rxjs';
 import { filter, mergeMap, tap } from 'rxjs/operators';
 import { IListener, SignedTransaction, Transaction, TransactionAnnounceResponse, TransactionRepository, TransactionType } from 'symbol-sdk';
@@ -25,7 +25,7 @@ import { AnnounceResolver } from '../resolvers/announce.resolver';
 import { FormatterService } from './formatter.service';
 
 export class TransactionAnnounceService {
-    public spinner: any;
+    public spinner: Ora;
     private transactionHttp: TransactionRepository;
     private listener: IListener;
     to: any;

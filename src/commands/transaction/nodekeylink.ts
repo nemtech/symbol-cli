@@ -21,7 +21,6 @@ import { AnnounceTransactionsCommand } from '../../interfaces/announce.transacti
 import { AnnounceTransactionsOptions } from '../../interfaces/announce.transactions.options';
 import { LinkActionResolver } from '../../resolvers/action.resolver';
 import { MaxFeeResolver } from '../../resolvers/maxFee.resolver';
-import { PasswordResolver } from '../../resolvers/password.resolver';
 import { PublicKeyResolver } from '../../resolvers/publicKey.resolver';
 import { TransactionSignatureOptions } from '../../services/transaction.signature.service';
 
@@ -50,8 +49,7 @@ export default class extends AnnounceTransactionsCommand {
     @metadata
     async execute(options: CommandOptions) {
         const profile = this.getProfile(options);
-        const password = await new PasswordResolver().resolve(options);
-        const account = profile.decrypt(password);
+        const account = await this.getSigningAccount(profile, options);
         const linkedPublicKey = (
             await new PublicKeyResolver().resolve(options, profile.networkType, 'Enter the public key to link: ', 'linkedPublicKey')
         ).publicKey;

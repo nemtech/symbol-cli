@@ -16,20 +16,22 @@
  *
  */
 
-import { SimpleWallet } from 'symbol-sdk';
+import { HorizontalTable } from 'cli-table3';
+import { ExpectedError } from 'clime';
+import { Account, Password, PublicAccount, SimpleWallet } from 'symbol-sdk';
+import { SigningAccount } from '../services/signing.service';
 import { NetworkCurrency } from './networkCurrency.model';
 import { CURRENT_PROFILE_VERSION, epochAdjustment, Profile, ProfileType } from './profile.model';
 import { PrivateKeyProfileCreation } from './profileCreation.types';
-import { ProfileDTOBase } from './profileDTO.types';
-
-export class PrivateKeyProfile extends Profile {
+import { PrivateKeyProfileDto } from './profileDTO.types';
+export class PrivateKeyProfile extends Profile<SimpleWallet> {
     /**
      * Creates a new Private Key Profile from a DTO
      * @static
      * @param {ProfileDTOBase} DTO
      * @returns {PrivateKeyProfile}
      */
-    public static createFromDTO(DTO: ProfileDTOBase): PrivateKeyProfile {
+    public static createFromDTO(DTO: PrivateKeyProfileDto): PrivateKeyProfile {
         return new PrivateKeyProfile(
             SimpleWallet.createFromDTO(DTO.simpleWallet),
             DTO.url,
@@ -50,7 +52,6 @@ export class PrivateKeyProfile extends Profile {
      */
     public static create(args: PrivateKeyProfileCreation): PrivateKeyProfile {
         const simpleWallet = SimpleWallet.createFromPrivateKey(args.name, args.password, args.privateKey, args.networkType);
-
         return new PrivateKeyProfile(
             simpleWallet,
             args.url,
@@ -64,36 +65,10 @@ export class PrivateKeyProfile extends Profile {
     }
 
     /**
-     * Creates an instance of PrivateKeyProfile.
-     * @param {SimpleWallet} simpleWallet
-     * @param {string} url
-     * @param {string} networkGenerationHash
-     * @param {number} epochAdjustment
-     * @param {NetworkCurrency} networkCurrency
-     * @param {number} version
-     * @param {ProfileType} type
-     * @param {('0' | '1')} isDefault
-     */
-    private constructor(
-        public readonly simpleWallet: SimpleWallet,
-        public readonly url: string,
-        public readonly networkGenerationHash: string,
-        public readonly epochAdjustment: number,
-        public readonly networkCurrency: NetworkCurrency,
-        public readonly version: number,
-        public readonly type: ProfileType,
-        public readonly isDefault: '0' | '1',
-    ) {
-        super(simpleWallet, url, networkGenerationHash, epochAdjustment, networkCurrency, version, type, isDefault);
-
-        this.table = this.getBaseTable();
-    }
-
-    /**
      * Creates a DTO
      * @returns {ProfileDTOBase}
      */
-    public toDTO(): ProfileDTOBase {
+    public toDTO(): PrivateKeyProfileDto {
         return {
             simpleWallet: this.simpleWallet.toDTO(),
             url: this.url,
@@ -104,5 +79,52 @@ export class PrivateKeyProfile extends Profile {
             default: this.isDefault,
             type: this.type,
         };
+    }
+
+    /**
+     * Returns true if the password is valid.
+     * @param {Password} password.
+     * @returns {boolean}
+     */
+    public isPasswordValid(password: Password): boolean {
+        try {
+            this.simpleWallet.open(password);
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * Opens a wallet.
+     * @param {Password} options - The  attribute "password" should contain the profile's password.
+     * @throws {ExpectedError}
+     * @returns {Account}
+     */
+    public decrypt(password: Password): Account {
+        if (!this.isPasswordValid(password)) {
+            throw new ExpectedError('The password provided does not match your account password');
+        }
+        return this.simpleWallet.open(password);
+    }
+
+    getAccount(password?: Password): Account | PublicAccount {
+        if (!password) {
+            throw new Error('Password must be provided');
+        }
+        return this.decrypt(password);
+    }
+
+    public getTable(password?: Password): HorizontalTable {
+        const table = this.getBaseTable();
+        if (password) {
+            table.push(['Password', password.value]);
+            table.push(['Private key', this.decrypt(password).privateKey]);
+        }
+        return table;
+    }
+
+    public async getSigningAccount(passwordResolver: () => Promise<Password>): Promise<SigningAccount> {
+        throw this.decrypt(await passwordResolver());
     }
 }

@@ -23,7 +23,6 @@ import { SupplyActionResolver } from '../../resolvers/action.resolver';
 import { AmountResolver } from '../../resolvers/amount.resolver';
 import { MaxFeeResolver } from '../../resolvers/maxFee.resolver';
 import { MosaicIdResolver } from '../../resolvers/mosaic.resolver';
-import { PasswordResolver } from '../../resolvers/password.resolver';
 import { TransactionSignatureOptions } from '../../services/transaction.signature.service';
 
 export class CommandOptions extends AnnounceTransactionsOptions {
@@ -57,8 +56,7 @@ export default class extends AnnounceTransactionsCommand {
     @metadata
     async execute(options: CommandOptions) {
         const profile = this.getProfile(options);
-        const password = await new PasswordResolver().resolve(options);
-        const account = profile.decrypt(password);
+        const account = await this.getSigningAccount(profile, options);
         const mosaicId = await new MosaicIdResolver().resolve(options);
         const action = await new SupplyActionResolver().resolve(options);
         const amount = await new AmountResolver().resolve(options, 'Enter absolute amount of supply change: ');

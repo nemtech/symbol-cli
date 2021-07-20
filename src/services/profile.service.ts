@@ -16,6 +16,7 @@
  *
  */
 import { HdProfile } from '../models/hdProfile.model';
+import { LedgerProfile } from '../models/ledgerProfile.model';
 import { PrivateKeyProfile } from '../models/privateKeyProfile.model';
 import { Profile } from '../models/profile.model';
 import { ProfileCreation } from '../models/profileCreation.types';
@@ -74,8 +75,8 @@ export class ProfileService {
      * @returns {Profile}
      */
     public createNewProfile(args: ProfileCreation): Profile {
-        const profile = 'mnemonic' in args ? HdProfile.create(args) : PrivateKeyProfile.create(args);
-
+        const profile =
+            'mnemonic' in args ? HdProfile.create(args) : 'path' in args ? LedgerProfile.create(args) : PrivateKeyProfile.create(args);
         this.profileRepository.save(profile);
         return profile;
     }

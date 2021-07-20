@@ -18,6 +18,7 @@
 
 import { expect } from 'chai';
 import { Deadline, MultisigAccountInfo, TransactionType, UInt64 } from 'symbol-sdk';
+import { PrivateKeyAccount } from '../../src/services/signing.service';
 import { AnnounceMode, TransactionSignatureService } from '../../src/services/transaction.signature.service';
 import { account1, account2 } from '../mocks/accounts.mock';
 import { mockPrivateKeyProfile1 } from '../mocks/profiles/profile.mock';
@@ -42,7 +43,7 @@ describe('Transaction signature service', () => {
         multisigSigner: null,
         isAggregate: false,
         transactions: [unsignedTransfer1],
-        account: account1,
+        account: new PrivateKeyAccount(account1),
     };
 
     const signatureOptionsComplete = {
@@ -50,7 +51,7 @@ describe('Transaction signature service', () => {
         multisigSigner: null,
         isAggregate: true,
         transactions: [unsignedTransfer1, unsignedTransfer2],
-        account: account1,
+        account: new PrivateKeyAccount(account1),
     };
 
     const signatureOptionsBonded = {
@@ -59,7 +60,7 @@ describe('Transaction signature service', () => {
         isAggregate: true,
         isAggregateBonded: true,
         transactions: [unsignedTransfer1, unsignedTransfer2],
-        account: account1,
+        account: new PrivateKeyAccount(account1),
     };
 
     const signatureOptionsMultisig = {
@@ -70,7 +71,7 @@ describe('Transaction signature service', () => {
         },
         isAggregate: true,
         transactions: [unsignedTransfer1],
-        account: account1,
+        account: new PrivateKeyAccount(account1),
     };
 
     it('should create transaction signature service', () => {
@@ -79,7 +80,7 @@ describe('Transaction signature service', () => {
 
     it('should get announce mode standard', async () => {
         const transactionSignatureService = TransactionSignatureService.create(mockPrivateKeyProfile1, default_options);
-        const signatures = transactionSignatureService.signTransactions(signatureOptionsStandard);
+        const signatures = await transactionSignatureService.signTransactions(signatureOptionsStandard);
         expect(transactionSignatureService.announceMode).to.be.equal(AnnounceMode.standard);
         expect((await signatures).length).to.be.equal(1);
     });
@@ -89,7 +90,8 @@ describe('Transaction signature service', () => {
         const signatures = transactionSignatureService.signTransactions(signatureOptionsComplete);
         expect(transactionSignatureService.announceMode).to.be.equal(AnnounceMode.complete);
         expect((await signatures).length).to.be.equal(1);
-        expect(transactionSignatureService['signCompleteTransactions'](signatureOptionsComplete.account).length).to.be.equal(1);
+        const signedTransactions = await transactionSignatureService['signCompleteTransactions'](signatureOptionsComplete.account);
+        expect(signedTransactions.length).to.be.equal(1);
     });
 
     it('should get announce mode complete w/ aggregate deadline', async () => {
@@ -101,9 +103,10 @@ describe('Transaction signature service', () => {
         const signatures = transactionSignatureService.signTransactions(signatureOptionsCompleteWithAggregateDeadline);
         expect(transactionSignatureService.announceMode).to.be.equal(AnnounceMode.complete);
         expect((await signatures).length).to.be.equal(1);
-        expect(
-            transactionSignatureService['signCompleteTransactions'](signatureOptionsCompleteWithAggregateDeadline.account).length,
-        ).to.be.equal(1);
+        const signedTransactions = await transactionSignatureService['signCompleteTransactions'](
+            signatureOptionsCompleteWithAggregateDeadline.account,
+        );
+        expect(signedTransactions.length).to.be.equal(1);
     });
 
     it('should get announce mode partial', async () => {

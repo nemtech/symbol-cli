@@ -15,9 +15,9 @@
  * limitations under the License.
  *
  */
-export interface Choices {
+export interface Choices<T = any> {
     title: string;
-    value: any;
+    value: T;
     disable?: boolean;
 }
 
